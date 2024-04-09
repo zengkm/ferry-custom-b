@@ -125,18 +125,29 @@ func ProcessWorkOrder(c *gin.Context) {
 		app.Error(c, -1, err, "")
 		return
 	}
-
-	// 处理工单
-	userAuthority, err = service.JudgeUserAuthority(c, params.WorkOrderId, params.SourceState)
-	if err != nil {
-		app.Error(c, -1, err, fmt.Sprintf("判断用户是否有权限失败，%v", err.Error()))
-		return
+	if params.Circulation == "编辑" {
+		// // 处理工单
+		// userAuthority, err = service.JudgeEditPermission(c, params.WorkOrderId, params.SourceState)
+		// if err != nil {
+		// 	app.Error(c, -1, err, fmt.Sprintf("判断用户是否有权限失败，%v", err.Error()))
+		// 	return
+		// }
+		// if !userAuthority {
+		// 	app.Error(c, -1, errors.New("当前用户没有权限进行此操作"), "")
+		// 	return
+		// }
+	} else {
+		// 处理工单
+		userAuthority, err = service.JudgeUserAuthority(c, params.WorkOrderId, params.SourceState)
+		if err != nil {
+			app.Error(c, -1, err, fmt.Sprintf("判断用户是否有权限失败，%v", err.Error()))
+			return
+		}
+		if !userAuthority {
+			app.Error(c, -1, errors.New("当前用户没有权限进行此操作"), "")
+			return
+		}
 	}
-	if !userAuthority {
-		app.Error(c, -1, errors.New("当前用户没有权限进行此操作"), "")
-		return
-	}
-
 	err = handle.HandleWorkOrder(
 		c,
 		params.WorkOrderId,    // 工单ID

@@ -44,9 +44,9 @@ func JudgeUserAuthority(c *gin.Context, workOrderId int, currentState string) (s
 
 	// 获取流程信息
 	err = orm.Eloquent.Model(&process.Info{}).Where("id = ?", workOrderInfo.Process).Find(&processInfo).Error
-	//if err != nil {
-	//	return
-	//}
+	if err != nil {
+		return
+	}
 
 	if processInfo.Structure != nil && len(processInfo.Structure) > 0 {
 		err = json.Unmarshal(processInfo.Structure, &processState.Structure)
@@ -190,6 +190,30 @@ func JudgeUserAuthority(c *gin.Context, workOrderId int, currentState string) (s
 				}
 			}
 		}
+	}
+	return
+}
+
+// 只有自己创建的工单和管理员角色, 且处理中的工单能编辑
+func JudgeEditPermission(c *gin.Context, workOrderId int, currentState string) (status bool, err error) {
+	var (
+		workOrderInfo process.WorkOrderInfo
+	)
+
+	if tools.GetRoleName(c) == "admin" || tools.GetRoleName(c) == "系统管理员" {
+		status = true
+		return
+	}
+	// 获取工单信息
+	err = orm.Eloquent.Model(&workOrderInfo).
+		Where("id = ?", workOrderId).
+		Find(&workOrderInfo).Error
+	if err != nil {
+		return
+	}
+	if tools.GetUserId(c) == workOrderInfo.Creator {
+		status = true
+		return
 	}
 	return
 }

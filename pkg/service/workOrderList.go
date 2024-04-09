@@ -8,6 +8,7 @@ import (
 	"ferry/pkg/pagination"
 	"ferry/tools"
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,6 +29,8 @@ type workOrderInfo struct {
 	StateName    string `json:"state_name"`
 	DataClassify int    `json:"data_classify"`
 	ProcessName  string `json:"process_name"`
+	ProjectName  string `gorm:"column:project_name;" json:"project_name"`
+	FinishTime   string `gorm:"column:finish_time;" json:"finish_time"`
 }
 
 func NewWorkOrder(classify int, c *gin.Context) *WorkOrder {
@@ -56,9 +59,10 @@ func (w *WorkOrder) PureWorkOrderList() (result interface{}, err error) {
 	creator := w.GinObj.DefaultQuery("creator", "")
 	processParam := w.GinObj.DefaultQuery("process", "")
 	formData := w.GinObj.DefaultQuery("formData", "")
+	projectName := w.GinObj.DefaultQuery("projectName", "")
 	db := orm.Eloquent.Model(&process.WorkOrderInfo{}).
 		Where("p_work_order_info.title like ?", fmt.Sprintf("%%%v%%", title))
-
+	db = db.Joins("left join p_work_order_tpl_data on p_work_order_tpl_data.work_order = p_work_order_info.id")
 	if startTime != "" {
 		db = db.Where("p_work_order_info.create_time >= ?", startTime)
 	}
@@ -79,6 +83,10 @@ func (w *WorkOrder) PureWorkOrderList() (result interface{}, err error) {
 			Where("p_work_order_tpl_data.form_data->'$.*' LIKE CONCAT('%',?,'%')", formData).
 			Group("p_work_order_info.id")
 	}
+	if projectName != "" {
+		db = db.Where(`p_work_order_tpl_data.form_data->'$."select_1679030435000_67403"' LIKE CONCAT('%',?,'%')`, projectName)
+	}
+
 	if processor != "" && w.Classify != 1 {
 		err = orm.Eloquent.Model(&processorInfo).
 			Where("user_id = ?", processor).
@@ -133,6 +141,10 @@ func (w *WorkOrder) PureWorkOrderList() (result interface{}, err error) {
 
 	db = db.Joins("left join p_process_info on p_work_order_info.process = p_process_info.id").
 		Select("p_work_order_info.*, p_process_info.name as process_name")
+
+	db = db.
+		Where("JSON_EXTRACT(p_work_order_tpl_data.form_data, '$.\"select_1679030435000_67403\"') IS NOT NULL").
+		Select(`p_work_order_info.*,p_process_info.name as process_name, JSON_EXTRACT(p_work_order_tpl_data.form_data, '$."select_1679030435000_67403"') as project_name,JSON_EXTRACT(p_work_order_tpl_data.form_data, '$."date_1710815061000_18129"') as finish_time`)
 
 	result, err = pagination.Paging(&pagination.Param{
 		C:  w.GinObj,
@@ -221,6 +233,8 @@ func (w *WorkOrder) WorkOrderList() (result interface{}, err error) {
 		workOrderDetails[i].Principals = principals
 		workOrderDetails[i].StateName = stateName
 		workOrderDetails[i].DataClassify = v.Classify
+		workOrderDetails[i].ProjectName = strings.Replace(v.ProjectName, `"`, ``, -1)
+		workOrderDetails[i].FinishTime = strings.Replace(v.FinishTime, `"`, ``, -1)
 		if authStatus {
 			workOrderInfoList = append(workOrderInfoList, workOrderDetails[i])
 		}

@@ -676,12 +676,34 @@ func (h *Handle) HandleWorkOrder(
 			return
 		}
 	case "userTask":
-		stateValue["processor"] = h.targetStateValue["assignValue"].([]interface{})
-		stateValue["process_method"] = h.targetStateValue["assignType"].(string)
-		h.updateValue["state"] = []map[string]interface{}{stateValue}
-		err = h.commonProcessing(c)
-		if err != nil {
-			return
+		if circulationValue == "编辑" {
+			// 当前的处理人
+			stateList := make([]interface{}, 0)
+			err = json.Unmarshal(h.workOrderDetails.State, &stateList)
+			if err != nil {
+				return
+			}
+			if len(stateList) == 0 {
+				// 处理没有元素的情况
+				return
+			}
+			stateMap := stateList[0].(map[string]interface{})
+			stateValue["process_method"] = stateMap["process_method"].(string)
+			stateValue["processor"] = stateMap["processor"].([]interface{})
+			h.updateValue["state"] = []map[string]interface{}{stateValue}
+			err = h.commonProcessing(c)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+		} else {
+			stateValue["processor"] = h.targetStateValue["assignValue"].([]interface{})
+			stateValue["process_method"] = h.targetStateValue["assignType"].(string)
+			h.updateValue["state"] = []map[string]interface{}{stateValue}
+			err = h.commonProcessing(c)
+			if err != nil {
+				return
+			}
 		}
 	case "receiveTask":
 		stateValue["processor"] = h.targetStateValue["assignValue"].([]interface{})

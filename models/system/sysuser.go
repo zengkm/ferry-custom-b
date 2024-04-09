@@ -83,6 +83,7 @@ type SysUserPage struct {
 	SysUserB
 	LoginM
 	DeptName string `gorm:"-" json:"deptName"`
+	RoleName string `gorm:"-" json:"roleName"`
 }
 
 type SysUserView struct {
@@ -202,8 +203,9 @@ func (e *SysUser) GetPage(pageSize int, pageIndex int) ([]SysUserPage, int, erro
 		doc   []SysUserPage
 		count int
 	)
-	table := orm.Eloquent.Select("sys_user.*,sys_dept.dept_name").Table(e.TableName())
+	table := orm.Eloquent.Select("sys_user.*,sys_dept.dept_name,sys_role.role_name").Table(e.TableName())
 	table = table.Joins("left join sys_dept on sys_dept.dept_id = sys_user.dept_id")
+	table = table.Joins("left join sys_role on sys_role.role_id = sys_user.role_id")
 
 	if e.Username != "" {
 		table = table.Where("sys_user.username like ?", "%"+e.Username+"%")
@@ -232,7 +234,7 @@ func (e *SysUser) GetPage(pageSize int, pageIndex int) ([]SysUserPage, int, erro
 	return doc, count, nil
 }
 
-//加密
+// 加密
 func (e *SysUser) Encrypt() (err error) {
 	if e.Password == "" {
 		return
@@ -247,7 +249,7 @@ func (e *SysUser) Encrypt() (err error) {
 	}
 }
 
-//添加
+// 添加
 func (e SysUser) Insert() (id int, err error) {
 	if err = e.Encrypt(); err != nil {
 		return
@@ -269,7 +271,7 @@ func (e SysUser) Insert() (id int, err error) {
 	return
 }
 
-//修改
+// 修改
 func (e *SysUser) Update(id int) (update SysUser, err error) {
 	if e.Password != "" {
 		if err = e.Encrypt(); err != nil {
